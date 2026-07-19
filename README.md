@@ -8,7 +8,7 @@ associate a custom route table, DHCP options and security lists.
 
 ```hcl
 module "subnet" {
-  source = "github.com/cybercapybara/terraform-oci-subnet"
+  source = "github.com/moveeeax/terraform-oci-subnet"
 
   compartment_id = var.compartment_id
   vcn_id         = var.vcn_id
