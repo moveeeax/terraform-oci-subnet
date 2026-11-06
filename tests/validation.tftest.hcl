@@ -120,3 +120,27 @@ run "rejects_more_than_five_security_lists" {
 
   expect_failures = [var.security_list_ids]
 }
+
+run "rejects_unknown_type" {
+  command = plan
+
+  variables {
+    type = "internal"
+  }
+
+  expect_failures = [var.type]
+}
+
+run "rejects_type_together_with_deprecated_flag" {
+  command = plan
+
+  variables {
+    type                       = "public"
+    prohibit_public_ip_on_vnic = false
+  }
+
+  expect_failures = [
+    oci_core_subnet.this,
+    check.prohibit_public_ip_on_vnic_is_deprecated,
+  ]
+}

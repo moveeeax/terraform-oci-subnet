@@ -14,12 +14,75 @@ run "defaults_to_a_private_subnet" {
   command = plan
 
   assert {
-    condition     = oci_core_subnet.this.prohibit_public_ip_on_vnic == true
-    error_message = "Subnets must be private by default; OCI's own default (false) hands out public IPs to every VNIC."
+    condition     = oci_core_subnet.this.prohibit_internet_ingress == true
+    error_message = "Subnets must be private by default (prohibit_internet_ingress = true); OCI's own default lets the internet in."
+  }
+
+  assert {
+    condition     = output.type == "private"
+    error_message = "The type output must report \"private\" by default."
   }
 }
 
-run "public_subnet_requires_opt_in" {
+run "type_private_prohibits_internet_ingress" {
+  command = plan
+
+  variables {
+    type = "private"
+  }
+
+  assert {
+    condition     = oci_core_subnet.this.prohibit_internet_ingress == true
+    error_message = "type = \"private\" must set prohibit_internet_ingress = true."
+  }
+
+  assert {
+    condition     = output.type == "private"
+    error_message = "The type output must echo type."
+  }
+}
+
+run "type_public_allows_internet_ingress" {
+  command = plan
+
+  variables {
+    type = "public"
+  }
+
+  assert {
+    condition     = oci_core_subnet.this.prohibit_internet_ingress == false
+    error_message = "type = \"public\" must set prohibit_internet_ingress = false."
+  }
+
+  assert {
+    condition     = output.type == "public"
+    error_message = "The type output must echo type."
+  }
+}
+
+# The deprecated flag keeps sending exactly what earlier versions sent, so an
+# existing subnet that pins it sees no change on upgrade.
+run "deprecated_flag_true_still_makes_a_private_subnet" {
+  command = plan
+
+  variables {
+    prohibit_public_ip_on_vnic = true
+  }
+
+  assert {
+    condition     = oci_core_subnet.this.prohibit_public_ip_on_vnic == true
+    error_message = "prohibit_public_ip_on_vnic = true must still be passed through."
+  }
+
+  assert {
+    condition     = output.type == "private"
+    error_message = "prohibit_public_ip_on_vnic = true must resolve to type \"private\"."
+  }
+
+  expect_failures = [check.prohibit_public_ip_on_vnic_is_deprecated]
+}
+
+run "public_subnet_via_deprecated_flag" {
   command = plan
 
   variables {
@@ -28,8 +91,15 @@ run "public_subnet_requires_opt_in" {
 
   assert {
     condition     = oci_core_subnet.this.prohibit_public_ip_on_vnic == false
-    error_message = "prohibit_public_ip_on_vnic must be passed through so a public subnet can be requested explicitly."
+    error_message = "prohibit_public_ip_on_vnic must be passed through so a public subnet can still be requested the old way."
   }
+
+  assert {
+    condition     = output.type == "public"
+    error_message = "prohibit_public_ip_on_vnic = false must resolve to type \"public\"."
+  }
+
+  expect_failures = [check.prohibit_public_ip_on_vnic_is_deprecated]
 }
 
 run "associates_supplied_security_lists" {

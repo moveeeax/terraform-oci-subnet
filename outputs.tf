@@ -22,3 +22,8 @@ output "subnet_domain_name" {
   description = "Internal domain name of the subnet, if a dns_label was set."
   value       = oci_core_subnet.this.subnet_domain_name
 }
+
+output "type" {
+  description = "Whether the subnet is \"private\" or \"public\", as resolved from type or the deprecated prohibit_public_ip_on_vnic."
+  value       = local.type
+}
