@@ -9,7 +9,8 @@ module "subnet" {
   cidr_block     = "10.10.1.0/24"
   dns_label      = "app"
 
-  prohibit_public_ip_on_vnic = true
+  # "private" (the default): no public IPv4 on VNICs and no internet ingress to IPv6.
+  type = "private"
 
   freeform_tags = {
     Environment = "sandbox"

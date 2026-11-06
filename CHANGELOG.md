@@ -6,6 +6,20 @@ All notable changes to this module are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `type` input (`"private"` or `"public"`, default private) that sets
+  `prohibit_internet_ingress`, so a private subnet also blocks internet ingress to
+  IPv6 addresses, and a `type` output.
+
+### Deprecated
+
+- `prohibit_public_ip_on_vnic`: use `type`. It keeps working (default is now `null`);
+  when set, the module sends that flag alone as before, and a `check` block warns.
+  Setting it together with `type` fails the plan. Callers that never set it now send
+  `prohibit_internet_ingress = true` instead of `prohibit_public_ip_on_vnic = true`;
+  both force a new subnet, so review the first plan after upgrading (see the README).
+
 ### Changed
 
 - CI: bump actions to their current majors, pin tool versions, and restrict the

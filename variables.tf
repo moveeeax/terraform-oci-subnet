@@ -48,10 +48,31 @@ variable "dns_label" {
   }
 }
 
+variable "type" {
+  description = <<-EOT
+    "private" or "public". Private sets prohibit_internet_ingress = true: VNICs get no
+    public IPv4 address and IPv6 addresses accept no ingress from the internet. Public
+    sets it to false. Null means "private", unless the deprecated
+    prohibit_public_ip_on_vnic is set. Note that OCI's own default is public.
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.type == null ? true : contains(["private", "public"], var.type)
+    error_message = "type must be \"private\" or \"public\"."
+  }
+}
+
 variable "prohibit_public_ip_on_vnic" {
-  description = "Whether to prohibit public IP addresses on VNICs in this subnet (makes it a private subnet). Defaults to true; note that OCI's own default is false."
+  description = <<-EOT
+    Deprecated: use `type`. Whether to prohibit public IP addresses on VNICs in this
+    subnet. When set, the module sends this flag instead of prohibit_internet_ingress,
+    exactly as earlier versions of the module did, and IPv6 ingress is left to OCI's
+    default (allowed). Cannot be combined with `type`. Will be removed in the next major version.
+  EOT
   type        = bool
-  default     = true
+  default     = null
 }
 
 variable "route_table_id" {
