@@ -8,6 +8,16 @@ output "cidr_block" {
   value       = oci_core_subnet.this.cidr_block
 }
 
+output "ipv6cidr_blocks" {
+  description = "IPv6 prefixes assigned to the subnet; empty for an IPv4-only subnet."
+  value       = oci_core_subnet.this.ipv6cidr_blocks
+}
+
+output "ipv6virtual_router_ip" {
+  description = "IPv6 address of the subnet's virtual router, for an IPv6-enabled subnet."
+  value       = oci_core_subnet.this.ipv6virtual_router_ip
+}
+
 output "virtual_router_ip" {
   description = "IP address of the virtual router for the subnet."
   value       = oci_core_subnet.this.virtual_router_ip
