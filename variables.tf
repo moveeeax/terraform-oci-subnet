@@ -35,6 +35,68 @@ variable "cidr_block" {
   }
 }
 
+variable "ipv6cidr_blocks" {
+  description = <<-EOT
+    IPv6 prefixes for the subnet, each a /64 network address inside one of the VCN's
+    IPv6 prefixes (Oracle-allocated GUA, ULA or BYOIPv6), for example
+    "2001:db8:0:1::/64". The VCN must have IPv6 enabled. Empty keeps the subnet IPv4-only.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for b in var.ipv6cidr_blocks : can(regex(":", b)) && can(cidrhost(b, 0))])
+    error_message = "Every entry in ipv6cidr_blocks must be an IPv6 CIDR such as 2001:db8:0:1::/64."
+  }
+
+  validation {
+    condition     = alltrue([for b in var.ipv6cidr_blocks : try(tonumber(split("/", b)[1]) == 64, false)])
+    error_message = "Every entry in ipv6cidr_blocks must be a /64; OCI subnets take IPv6 prefixes of exactly that size."
+  }
+
+  validation {
+    # Compare in normalized form so "2001:0db8::/64" and "2001:db8::/64" agree.
+    condition     = alltrue([for b in var.ipv6cidr_blocks : try(cidrhost(b, 0) == cidrhost("${split("/", b)[0]}/128", 0), false)])
+    error_message = "Every entry in ipv6cidr_blocks must be the network address of its /64 (host bits zero), for example 2001:db8:0:1::/64 and not 2001:db8:0:1::5/64."
+  }
+
+  validation {
+    condition     = length(distinct(var.ipv6cidr_blocks)) == length(var.ipv6cidr_blocks)
+    error_message = "ipv6cidr_blocks must not contain duplicates."
+  }
+}
+
+variable "vcn_ipv6_cidr_block" {
+  description = <<-EOT
+    The VCN's IPv6 prefix (for example the vcn module's IPv6 output). Together with
+    ipv6_netnum it derives one /64 for the subnet with cidrsubnet(), appended to
+    ipv6cidr_blocks. Set both or neither.
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.vcn_ipv6_cidr_block == null ? true : can(regex(":", var.vcn_ipv6_cidr_block)) && can(cidrhost(var.vcn_ipv6_cidr_block, 0))
+    error_message = "vcn_ipv6_cidr_block must be an IPv6 CIDR such as 2001:db8::/56."
+  }
+
+  validation {
+    condition     = var.vcn_ipv6_cidr_block == null ? true : try(tonumber(split("/", var.vcn_ipv6_cidr_block)[1]) <= 64, false)
+    error_message = "vcn_ipv6_cidr_block must be a /64 or larger (OCI allocates a /56 per VCN) to hold a /64 subnet."
+  }
+}
+
+variable "ipv6_netnum" {
+  description = "Index of the /64 to take from vcn_ipv6_cidr_block, as the netnum argument of cidrsubnet(). 0-255 for a /56. Set together with vcn_ipv6_cidr_block."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.ipv6_netnum == null ? true : var.ipv6_netnum >= 0 && floor(var.ipv6_netnum) == var.ipv6_netnum
+    error_message = "ipv6_netnum must be a whole number, 0 or greater."
+  }
+}
+
 variable "dns_label" {
   description = "DNS label for the subnet, used to form its domain name. Null disables per-subnet DNS. Can only be set if the VCN itself has a DNS label."
   type        = string

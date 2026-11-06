@@ -1,8 +1,9 @@
 # terraform-oci-subnet
 
 Terraform module that manages an [Oracle Cloud Infrastructure](https://www.oracle.com/cloud/)
-subnet inside an existing VCN. It supports public and private subnets and lets you
-associate a custom route table, DHCP options and security lists.
+subnet inside an existing VCN. It supports public and private subnets, optional IPv6
+/64 prefixes for dual-stack subnets, and lets you associate a custom route table, DHCP
+options and security lists.
 
 ## Usage
 
@@ -25,6 +26,39 @@ module "subnet" {
 ```
 
 A runnable example lives in [`examples/basic`](examples/basic).
+
+## IPv6
+
+A subnet in an IPv6-enabled VCN can take one or more /64 prefixes. Pass them directly:
+
+```hcl
+  ipv6cidr_blocks = ["2001:db8:0:1::/64"]
+```
+
+or let the module carve one out of the VCN's prefix with `cidrsubnet()`:
+
+```hcl
+module "vcn" {
+  source         = "github.com/moveeeax/terraform-oci-vcn?ref=v1.0.0"
+  # ...
+  is_ipv6enabled = true
+}
+
+module "subnet" {
+  # ...
+  vcn_ipv6_cidr_block = module.vcn.ipv6_cidr_blocks[0] # Oracle allocates a /56
+  ipv6_netnum         = 1                              # the second /64 of it
+}
+```
+
+`ipv6_netnum` indexes /64 blocks inside the VCN prefix: 0-255 for the usual /56, more for
+a larger BYOIPv6 prefix. A derived prefix is appended after any explicit
+`ipv6cidr_blocks`.
+
+Internet ingress to IPv6 addresses is governed by `prohibit_internet_ingress`, which the
+module sets from `type`: a private subnet (the default) accepts no IPv6 ingress from the
+internet. The deprecated `prohibit_public_ip_on_vnic` covers IPv4 only, so a subnet that
+still sets it stays reachable over IPv6; switch it to `type` before adding IPv6 prefixes.
 
 ## Security notes
 
@@ -75,6 +109,9 @@ switch a no-op, but this has not been verified against a live tenancy, so read t
 plan after upgrading. If it shows the subnet being replaced, set
 `prohibit_public_ip_on_vnic = true` (or `false`) explicitly: that sends exactly the old
 request until you can migrate.
+may be attached to a subnet. Each entry of `ipv6cidr_blocks` must be an IPv6 /64 network
+address (host bits zero), without duplicates. `vcn_ipv6_cidr_block` must be IPv6 and /64
+or larger, `ipv6_netnum` a whole number that fits in it, and the two are set together.
 
 ## Tests
 
@@ -97,6 +134,9 @@ OCI provider — no credentials and no network required. The tests need Terrafor
 | `vcn_id`                     | OCID of the VCN the subnet belongs to.                                  | `string`       | n/a     |   yes    |
 | `display_name`               | Human-readable name for the subnet.                                     | `string`       | n/a     |   yes    |
 | `cidr_block`                 | IPv4 CIDR block assigned to the subnet. Network address, `/16`–`/30`.   | `string`       | n/a     |   yes    |
+| `ipv6cidr_blocks`            | IPv6 /64 prefixes for the subnet. Empty keeps it IPv4-only.             | `list(string)` | `[]`    |    no    |
+| `vcn_ipv6_cidr_block`        | VCN IPv6 prefix to derive a /64 from, together with `ipv6_netnum`.      | `string`       | `null`  |    no    |
+| `ipv6_netnum`                | Index of the /64 inside `vcn_ipv6_cidr_block` (0-255 for a /56).        | `number`       | `null`  |    no    |
 | `dns_label`                  | DNS label for the subnet. Letter-initial, alphanumeric, max 15 chars.   | `string`       | `null`  |    no    |
 | `type`                       | `"private"` or `"public"`. Private prohibits internet ingress (IPv4 and IPv6). | `string` | `null` (private) | no |
 | `prohibit_public_ip_on_vnic` | Deprecated, use `type`. Prohibit public IPs on VNICs (IPv4 only).       | `bool`         | `null`  |    no    |
@@ -112,6 +152,8 @@ OCI provider — no credentials and no network required. The tests need Terrafor
 |----------------------|----------------------------------------------------------|
 | `id`                 | OCID of the subnet.                                      |
 | `cidr_block`         | IPv4 CIDR block assigned to the subnet.                  |
+| `ipv6cidr_blocks`    | IPv6 prefixes assigned to the subnet.                    |
+| `ipv6virtual_router_ip` | IPv6 address of the subnet's virtual router.          |
 | `virtual_router_ip`  | IP address of the virtual router for the subnet.         |
 | `virtual_router_mac` | MAC address of the virtual router for the subnet.        |
 | `subnet_domain_name` | Internal domain name of the subnet, if a dns_label set.  |

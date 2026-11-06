@@ -11,6 +11,11 @@ All notable changes to this module are documented here. The format follows
 - `type` input (`"private"` or `"public"`, default private) that sets
   `prohibit_internet_ingress`, so a private subnet also blocks internet ingress to
   IPv6 addresses, and a `type` output.
+- IPv6 prefixes: `ipv6cidr_blocks` (list of /64 network addresses, validated at plan
+  time), and the `vcn_ipv6_cidr_block` + `ipv6_netnum` pair that derives a /64 from the
+  VCN's IPv6 prefix with `cidrsubnet()`. New outputs `ipv6cidr_blocks` and
+  `ipv6virtual_router_ip`. Subnets without these inputs stay IPv4-only and plan
+  unchanged.
 
 ### Deprecated
 
